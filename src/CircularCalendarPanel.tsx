@@ -1,9 +1,12 @@
 import React, { PureComponent } from 'react';
 import { PanelProps, toFixed } from '@grafana/data';
+import { getLocationSrv } from '@grafana/runtime';
 import { SimpleOptions } from 'types';
 import { DateTime } from 'luxon';
 import { css } from 'emotion';
-import { CanvasMouseCallback, CanvasElement } from 'CanvasElement';
+import { CanvasMouseCallback, CanvasElement, MouseEvtType } from 'CanvasElement';
+import { Button } from '@grafana/ui';
+import { DayBucketInfo, toDayBucketsInfo, DayBucket } from './xform';
 
 interface Props extends PanelProps<SimpleOptions> {}
 
@@ -51,6 +54,8 @@ interface State {
   theta: number;
   radius: number;
   hover?: TTipSpot;
+  year: number;
+  info?: DayBucketInfo;
 }
 
 export class CircularCalendarPanel extends PureComponent<Props, State> {
@@ -59,6 +64,23 @@ export class CircularCalendarPanel extends PureComponent<Props, State> {
     y: 0,
     theta: 0,
     radius: 0,
+    year: DateTime.local().year,
+  };
+
+  componentDidMount() {
+    this.processBuckets();
+  }
+
+  componentDidUpdate(prevProps: Props) {
+    if (prevProps.data !== this.props.data) {
+      this.processBuckets();
+    }
+  }
+
+  processBuckets = () => {
+    this.setState({
+      info: toDayBucketsInfo(this.state.year, this.props.data.series),
+    });
   };
 
   onMouseEvent = (info: CanvasMouseCallback) => {
@@ -82,6 +104,7 @@ export class CircularCalendarPanel extends PureComponent<Props, State> {
     const scale = (radius - pad) / (size - pad);
 
     const start = DateTime.local().set({
+      year: this.state.year,
       ordinal: 1,
       hour: 0,
       minute: 0,
@@ -106,10 +129,51 @@ export class CircularCalendarPanel extends PureComponent<Props, State> {
       }),
     };
 
+    if (info.type === MouseEvtType.up) {
+      this.onSelectedMonth(hover.date.year, hover.date.month);
+    }
+
     this.setState({ x, y, theta, radius: scale, hover });
   };
 
+  drawBucket = (ctx: CanvasRenderingContext2D, bucket: DayBucket, size: number, hover?: boolean) => {
+    const d = bucket.date;
+
+    const weekPercent = d.weekNumber / d.weeksInWeekYear;
+    const dayPercent = (d.weekday - 1) / 6;
+
+    const theta = weekPercent * 2 * Math.PI * -1 + Math.PI / 2;
+    const distance = this.props.options.pad + dayPercent * size;
+
+    const x = distance * Math.cos(theta);
+    const y = distance * Math.sin(theta);
+
+    let radius = 3;
+    if (bucket && bucket.count > 0) {
+      radius = 6;
+    }
+
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    if (bucket && bucket.count > 0) {
+      ctx.fillStyle = colors[d.month];
+      ctx.fill();
+    }
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = colors[d.month];
+    if (hover) {
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#F00';
+    }
+    ctx.stroke();
+  };
+
   draw = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
+    const { info, hover } = this.state;
+    if (!info) {
+      return; // not yet processed
+    }
+
     // Clear the background
     ctx.fillStyle = '#333';
     ctx.clearRect(0, 0, width, height);
@@ -130,58 +194,68 @@ export class CircularCalendarPanel extends PureComponent<Props, State> {
 
       const pad = this.props.options.pad;
       const size = Math.min(width, height) / 2 - 15 - pad;
-      const start = DateTime.local().set({
-        ordinal: 1,
-        hour: 0,
-        minute: 0,
-        second: 0,
-        millisecond: 0,
-      });
 
-      const sel = this.state.hover ? this.state.hover.date.toSQLDate() : null;
-
-      for (let i = 1; i <= start.daysInYear; i++) {
-        const d = start.set({ ordinal: i });
-
-        const weekPercent = d.weekNumber / start.weeksInWeekYear;
-        const dayPercent = (d.weekday - 1) / 6;
-
-        const theta = weekPercent * 2 * Math.PI * -1 + Math.PI / 2;
-        const distance = pad + dayPercent * size;
-
-        const x = distance * Math.cos(theta);
-        const y = distance * Math.sin(theta);
-
-        const radius = 5;
-
-        ctx.beginPath();
-        ctx.strokeStyle = colors[d.month];
-        if (d.toSQLDate() === sel) {
-          ctx.strokeStyle = '#F00';
-        }
-        ctx.arc(x, y, radius, 0, Math.PI * 2);
-        ctx.stroke();
+      for (const day of info.day) {
+        this.drawBucket(ctx, day, size);
       }
 
-      if (false) {
-        //this.state.radius > 0) {
-        const { theta } = this.state;
-
-        const distance = this.state.radius;
-        const x = distance * Math.cos(theta);
-        const y = distance * Math.sin(theta);
-
-        const radius = 15;
-
-        ctx.beginPath();
-        ctx.strokeStyle = '#F00'; //colors[d.month];
-        ctx.arc(x, y, radius, 0, Math.PI * 2);
-        ctx.stroke();
+      // Draw the hovered item on top
+      if (hover) {
+        const day = info.day[hover.date.ordinal - 1];
+        this.drawBucket(ctx, day, size, true);
       }
     }
   };
 
-  renderTooltip = (hover: TTipSpot) => {
+  onClickYear = () => {
+    const from = DateTime.local().set({
+      year: this.state.year,
+      ordinal: 1,
+      hour: 0,
+      minute: 0,
+      second: 0,
+      millisecond: 0,
+    });
+    const to = from.plus({ year: 1 });
+    getLocationSrv().update({
+      partial: true,
+      query: {
+        from: from.toMillis(),
+        to: to.toMillis(),
+      },
+    });
+  };
+
+  onSelectedMonth = (year: number, month: number) => {
+    const start = DateTime.local().set({
+      year,
+      month,
+      day: 1,
+      hour: 0,
+      minute: 0,
+      second: 0,
+      millisecond: 0,
+    });
+
+    const from = start.set({
+      day: 1,
+    });
+    const to = from.plus({ month: 1 });
+    getLocationSrv().update({
+      partial: true,
+      query: {
+        from: from.toMillis(),
+        to: to.toMillis(),
+      },
+    });
+  };
+
+  renderTooltip = () => {
+    const { info, hover } = this.state;
+    if (!info || !hover) {
+      return;
+    }
+    const day = info.day[hover.date.ordinal - 1];
     return (
       <div
         className={css`
@@ -196,7 +270,9 @@ export class CircularCalendarPanel extends PureComponent<Props, State> {
           left: hover.mouseX + 10,
         }}
       >
-        {hover.date.toLocaleString(DateTime.DATE_FULL)}
+        <div>{day.date.toLocaleString(DateTime.DATE_FULL)}</div>
+        {day.count > 0 && <div>COUNT: {day.count}</div>}
+        {day.sum > 0 && <div>SUM: {day.sum}</div>}
       </div>
     );
   };
@@ -233,14 +309,30 @@ export class CircularCalendarPanel extends PureComponent<Props, State> {
           `}
         >
           <div>
-            x,y: ({state.x}, {state.y})
-          </div>
-          <div>
-            φ,r: ({toFixed(state.theta, 3)}, {toFixed(state.radius, 3)})
+            <Button variant="inverse" onClick={this.onClickYear}>
+              {this.state.year}
+            </Button>
           </div>
         </div>
 
-        {this.state.hover && this.renderTooltip(this.state.hover)}
+        <div
+          className={css`
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            padding: 10px;
+            text-align: right;
+          `}
+        >
+          <div>
+            ({state.x}, {state.y}) = x,y
+          </div>
+          <div>
+            ({toFixed(state.theta, 3)}, {toFixed(state.radius, 3)}) = φ,r
+          </div>
+        </div>
+
+        { this.renderTooltip() }
       </div>
     );
   }
