@@ -16,6 +16,12 @@ export class CircularCalendarEditor extends PureComponent<PanelEditorProps<Simpl
       <div className="section gf-form-group">
         <h5 className="section-heading">Display</h5>
         <FormField label="Text" labelWidth={5} inputWidth={20} type="text" onChange={this.onTextChanged} value={options.text || ''} />
+
+        <br />
+        <br />
+        <br />
+        <div>TODO: center padding</div>
+        <div>TODO: first day of week (monday? or sunday)</div>
       </div>
     );
   }

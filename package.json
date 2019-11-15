@@ -14,5 +14,9 @@
     "@grafana/data": "next",
     "@grafana/toolkit": "next",
     "@grafana/ui": "next"
+  },
+  "dependencies": {
+    "@types/luxon": "^1.15.2",
+    "luxon": "^1.21.1"
   }
 }
