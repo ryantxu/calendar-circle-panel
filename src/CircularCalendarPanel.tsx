@@ -1,5 +1,5 @@
 import React, { PureComponent } from 'react';
-import { PanelProps } from '@grafana/data';
+import { PanelProps, toFixed } from '@grafana/data';
 import { SimpleOptions } from 'types';
 import { DateTime } from 'luxon';
 import { css } from 'emotion';
@@ -39,14 +39,18 @@ export const colors = [
   '#BF1B00',
 ];
 
+interface TTipSpot {
+  mouseX: number;
+  mouseY: number;
+  date: DateTime;
+}
+
 interface State {
   x: number;
   y: number;
   theta: number;
   radius: number;
-  week: number;
-  weekday: number;
-  hover?: DateTime;
+  hover?: TTipSpot;
 }
 
 export class CircularCalendarPanel extends PureComponent<Props, State> {
@@ -54,9 +58,7 @@ export class CircularCalendarPanel extends PureComponent<Props, State> {
     x: 0,
     y: 0,
     theta: 0,
-    radius: -10,
-    week: -1,
-    weekday: -1,
+    radius: 0,
   };
 
   onMouseEvent = (info: CanvasMouseCallback) => {
@@ -68,16 +70,16 @@ export class CircularCalendarPanel extends PureComponent<Props, State> {
 
     let theta = Math.atan2(y, x) * -1 + Math.PI / 2;
     if (theta < 0) {
-      theta += Math.PI * 2;
+      theta += Math.PI * 2; // ATAN2 is -PI/PI
     }
+
     const radius = Math.sqrt(x * x + y * y);
-
-    const size = Math.min(width, height) / 2 - 15 - pad;
-
-    if (radius > size + pad + 20 || radius < pad - 5) {
+    const size = Math.min(width, height) / 2 - 15;
+    if (radius > size + 20 || radius < pad - 10) {
       this.setState({ x, y, theta, radius: -1, hover: undefined });
       return;
     }
+    const scale = (radius - pad) / (size - pad);
 
     const start = DateTime.local().set({
       ordinal: 1,
@@ -88,14 +90,23 @@ export class CircularCalendarPanel extends PureComponent<Props, State> {
     });
 
     const week = Math.floor((theta / (Math.PI * 2)) * start.weeksInWeekYear);
-    const weekday = Math.ceil(((radius - pad) / size) * 7); // day of the week
+    let weekday = Math.ceil(scale * 7);
+    if (scale < 0.1) {
+      weekday = 1;
+    } else if (scale > 0.9) {
+      weekday = 7;
+    }
 
-    const hover = start.set({
-      weekNumber: week,
-      weekday: weekday,
-    });
+    const hover = {
+      mouseX: info.event.clientX,
+      mouseY: info.event.clientY,
+      date: start.set({
+        weekNumber: week,
+        weekday: weekday,
+      }),
+    };
 
-    this.setState({ x, y, theta, radius, week, weekday, hover });
+    this.setState({ x, y, theta, radius: scale, hover });
   };
 
   draw = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
@@ -127,7 +138,7 @@ export class CircularCalendarPanel extends PureComponent<Props, State> {
         millisecond: 0,
       });
 
-      const sel = this.state.hover ? this.state.hover.toSQLDate() : null;
+      const sel = this.state.hover ? this.state.hover.date.toSQLDate() : null;
 
       for (let i = 1; i <= start.daysInYear; i++) {
         const d = start.set({ ordinal: i });
@@ -170,9 +181,29 @@ export class CircularCalendarPanel extends PureComponent<Props, State> {
     }
   };
 
+  renderTooltip = (hover: TTipSpot) => {
+    return (
+      <div
+        className={css`
+          position: fixed;
+          padding: 10px;
+          border: 1px solid black;
+          z-index: 5000;
+          background: #333;
+        `}
+        style={{
+          top: hover.mouseY + 10,
+          left: hover.mouseX + 10,
+        }}
+      >
+        {hover.date.toLocaleString(DateTime.DATE_FULL)}
+      </div>
+    );
+  };
+
   render() {
     const { width, height } = this.props;
-    const { x, y } = this.state;
+    const { state } = this;
 
     return (
       <div
@@ -190,23 +221,26 @@ export class CircularCalendarPanel extends PureComponent<Props, State> {
             left: 0;
           `}
         >
-          <CanvasElement {...this.state} draw={this.draw} onMouseEvent={this.onMouseEvent} width={width} height={height} />
+          <CanvasElement {...state} draw={this.draw} onMouseEvent={this.onMouseEvent} width={width} height={height} />
         </div>
 
         <div
           className={css`
             position: absolute;
-            top: 0;
-            right: 0;
+            bottom: 0;
+            left: 0;
             padding: 10px;
           `}
         >
           <div>
-            {x}, {y}
-            <br />
-            {this.state.hover && this.state.hover.toSQLDate()}
+            x,y: ({state.x}, {state.y})
+          </div>
+          <div>
+            φ,r: ({toFixed(state.theta, 3)}, {toFixed(state.radius, 3)})
           </div>
         </div>
+
+        {this.state.hover && this.renderTooltip(this.state.hover)}
       </div>
     );
   }
