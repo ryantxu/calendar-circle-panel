@@ -1,0 +1,28 @@
+{
+  "type": "panel",
+  "name": "Circular Calendar",
+  "id": "circular-calendar-panel",
+
+  "info": {
+    "description": "Circular Calendar Panel",
+    "author": {
+      "name": "Your Name"
+    },
+    "logos": {
+      "small": "img/icon.svg",
+      "large": "img/icon.svg"
+    },
+    "links": [
+      {"name": "Website", "url": "https://github.com/grafana/simple-react-panel"},
+      {"name": "License", "url": "https://github.com/grafana/simple-react-panel/blob/master/LICENSE"}
+    ],
+    "screenshots": [],
+    "version": "%VERSION%",
+    "updated": "%TODAY%"
+  },
+
+  "dependencies": {
+    "grafanaVersion": "6.5.x",
+    "plugins": []
+  }
+}
