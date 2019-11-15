@@ -44,6 +44,9 @@ interface State {
   y: number;
   theta: number;
   radius: number;
+  week: number;
+  weekday: number;
+  hover?: DateTime;
 }
 
 export class CircularCalendarPanel extends PureComponent<Props, State> {
@@ -52,22 +55,47 @@ export class CircularCalendarPanel extends PureComponent<Props, State> {
     y: 0,
     theta: 0,
     radius: -10,
+    week: -1,
+    weekday: -1,
   };
 
   onMouseEvent = (info: CanvasMouseCallback) => {
-    const { width, height } = this.props;
+    const { width, height, options } = this.props;
+    const { pad } = options;
+
     const x = info.x.offset - width / 2;
     const y = (info.y.offset - height / 2) * -1;
 
-    const theta = Math.atan2(y, x);
-    let radius = Math.sqrt(x * x + y * y);
+    let theta = Math.atan2(y, x) * -1 + Math.PI / 2;
+    if (theta < 0) {
+      theta += Math.PI * 2;
+    }
+    const radius = Math.sqrt(x * x + y * y);
 
-    const size = Math.min(width, height) / 2;
-    if (radius > size) {
-      radius = -1;
+    const size = Math.min(width, height) / 2 - 15 - pad;
+
+    if (radius > size + pad + 20 || radius < pad - 5) {
+      this.setState({ x, y, theta, radius: -1, hover: undefined });
+      return;
     }
 
-    this.setState({ x, y, theta, radius });
+    const start = DateTime.local().set({
+      ordinal: 1,
+      hour: 0,
+      minute: 0,
+      second: 0,
+      millisecond: 0,
+    });
+
+    const week = Math.floor((theta / (Math.PI * 2)) * start.weeksInWeekYear);
+    const weekday = Math.ceil(((radius - pad) / size) * 7); // day of the week
+
+    const hover = start.set({
+      weekNumber: week,
+      weekday: weekday,
+    });
+
+    this.setState({ x, y, theta, radius, week, weekday, hover });
   };
 
   draw = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
@@ -89,7 +117,8 @@ export class CircularCalendarPanel extends PureComponent<Props, State> {
         height / 2 // Vertical translation (moving).
       );
 
-      const size = Math.min(width, height) / 2 - 15;
+      const pad = this.props.options.pad;
+      const size = Math.min(width, height) / 2 - 15 - pad;
       const start = DateTime.local().set({
         ordinal: 1,
         hour: 0,
@@ -98,32 +127,33 @@ export class CircularCalendarPanel extends PureComponent<Props, State> {
         millisecond: 0,
       });
 
-      const pad = 30;
+      const sel = this.state.hover ? this.state.hover.toSQLDate() : null;
+
       for (let i = 1; i <= start.daysInYear; i++) {
         const d = start.set({ ordinal: i });
 
-        const theta = 2 * Math.PI * (d.weekNumber / start.weeksInWeekYear) - Math.PI / 2; // rotate so jan is at the top
-        const distance = pad + ((d.weekday - 1) / 6) * (size - pad);
+        const weekPercent = d.weekNumber / start.weeksInWeekYear;
+        const dayPercent = (d.weekday - 1) / 6;
+
+        const theta = weekPercent * 2 * Math.PI * -1 + Math.PI / 2;
+        const distance = pad + dayPercent * size;
+
         const x = distance * Math.cos(theta);
         const y = distance * Math.sin(theta);
 
-        const radius = 2 + Math.random() * 5;
+        const radius = 5;
 
         ctx.beginPath();
-        ctx.strokeStyle = '#CCC'; //colors[d.month];
+        ctx.strokeStyle = colors[d.month];
+        if (d.toSQLDate() === sel) {
+          ctx.strokeStyle = '#F00';
+        }
         ctx.arc(x, y, radius, 0, Math.PI * 2);
         ctx.stroke();
-
-        // const ttip = <div>{d.toRFC2822()}<br/>{d.toSQLDate()}</div>
-
-        // elements.push(
-        //   <Tooltip key={i} placement="top" content={ ttip }>
-        //     <circle style={{ fill:  }} r={radius} cx={x} cy={y} />
-        //   </Tooltip>
-        // );
       }
 
-      if (this.state.radius > 0) {
+      if (false) {
+        //this.state.radius > 0) {
         const { theta } = this.state;
 
         const distance = this.state.radius;
@@ -150,6 +180,7 @@ export class CircularCalendarPanel extends PureComponent<Props, State> {
           position: 'relative',
           width,
           height,
+          cursor: this.state.hover ? 'pointer' : '',
         }}
       >
         <div
@@ -172,6 +203,8 @@ export class CircularCalendarPanel extends PureComponent<Props, State> {
         >
           <div>
             {x}, {y}
+            <br />
+            {this.state.hover && this.state.hover.toSQLDate()}
           </div>
         </div>
       </div>

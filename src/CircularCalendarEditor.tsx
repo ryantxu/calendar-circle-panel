@@ -1,12 +1,17 @@
 import React, { PureComponent } from 'react';
 import { FormField } from '@grafana/ui';
-import { PanelEditorProps } from '@grafana/data';
+import { PanelEditorProps, toIntegerOrUndefined } from '@grafana/data';
 
 import { SimpleOptions } from './types';
 
 export class CircularCalendarEditor extends PureComponent<PanelEditorProps<SimpleOptions>> {
   onTextChanged = ({ target }: any) => {
     this.props.onOptionsChange({ ...this.props.options, text: target.value });
+  };
+
+  onPaddingChanged = ({ target }: any) => {
+    const v = toIntegerOrUndefined(target.value);
+    this.props.onOptionsChange({ ...this.props.options, pad: v ? v : 40 });
   };
 
   render() {
@@ -16,6 +21,8 @@ export class CircularCalendarEditor extends PureComponent<PanelEditorProps<Simpl
       <div className="section gf-form-group">
         <h5 className="section-heading">Display</h5>
         <FormField label="Text" labelWidth={5} inputWidth={20} type="text" onChange={this.onTextChanged} value={options.text || ''} />
+
+        <FormField label="Padding" labelWidth={5} width={6} step={5} onChange={this.onPaddingChanged} value={options.pad} type="number" />
 
         <br />
         <br />
