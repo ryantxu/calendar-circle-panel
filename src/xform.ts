@@ -5,6 +5,7 @@ export interface DayBucket {
   date: DateTime;
   count: number;
   sum: number;
+  scale: number; // 0-1 for min/max on sum
 }
 
 export interface DayBucketInfo {
@@ -30,6 +31,7 @@ export const toDayBucketsInfo = (year: number, data: DataFrame[]): DayBucketInfo
       date: d,
       count: 0,
       sum: 0,
+      scale: 0,
     });
   }
 
@@ -37,7 +39,11 @@ export const toDayBucketsInfo = (year: number, data: DataFrame[]): DayBucketInfo
     date: start, // IGNORE
     count: 0,
     sum: 0,
+    scale: 0,
   };
+  let min = Number.MAX_VALUE;
+  let max = Number.MIN_VALUE;
+
   for (const frame of data) {
     const { timeField, timeIndex } = getTimeField(frame);
     if (!timeField) {
@@ -57,9 +63,25 @@ export const toDayBucketsInfo = (year: number, data: DataFrame[]): DayBucketInfo
             const bucket = time.year !== year ? outside : values[time.ordinal - 1];
             bucket.count = bucket.count + 1;
             bucket.sum = bucket.sum + value;
+            if(bucket.sum > max) {
+              max = bucket.sum;
+            }
+            if(bucket.sum < min) {
+              min = bucket.sum;
+            }
           }
         }
         continue; // the first number field
+      }
+    }
+  }
+
+  const range = max - min;
+  if(range > 0) {
+    console.log('MINMAX', min, max, range); 
+    for(const bucket of values) {
+      if(bucket.count > 0) {
+        bucket.scale = (bucket.sum-min)/range;
       }
     }
   }

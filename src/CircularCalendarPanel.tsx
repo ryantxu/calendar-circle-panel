@@ -148,9 +148,9 @@ export class CircularCalendarPanel extends PureComponent<Props, State> {
     const x = distance * Math.cos(theta);
     const y = distance * Math.sin(theta);
 
-    let radius = 3;
-    if (bucket && bucket.count > 0) {
-      radius = 6;
+    let radius = 1;
+    if (bucket) {
+      radius += 8 * bucket.scale;
     }
 
     ctx.beginPath();
@@ -273,6 +273,7 @@ export class CircularCalendarPanel extends PureComponent<Props, State> {
         <div>{day.date.toLocaleString(DateTime.DATE_FULL)}</div>
         {day.count > 0 && <div>COUNT: {day.count}</div>}
         {day.sum > 0 && <div>SUM: {day.sum}</div>}
+        {day.scale}
       </div>
     );
   };
