@@ -273,7 +273,6 @@ export class CircularCalendarPanel extends PureComponent<Props, State> {
         <div>{day.date.toLocaleString(DateTime.DATE_FULL)}</div>
         {day.count > 0 && <div>COUNT: {day.count}</div>}
         {day.sum > 0 && <div>SUM: {day.sum}</div>}
-        {day.scale}
       </div>
     );
   };
@@ -316,22 +315,24 @@ export class CircularCalendarPanel extends PureComponent<Props, State> {
           </div>
         </div>
 
-        <div
-          className={css`
-            position: absolute;
-            bottom: 0;
-            right: 0;
-            padding: 10px;
-            text-align: right;
-          `}
-        >
-          <div>
-            ({state.x}, {state.y}) = x,y
+        {false && (
+          <div
+            className={css`
+              position: absolute;
+              bottom: 0;
+              right: 0;
+              padding: 10px;
+              text-align: right;
+            `}
+          >
+            <div>
+              ({state.x}, {state.y}) = x,y
+            </div>
+            <div>
+              ({toFixed(state.theta, 3)}, {toFixed(state.radius, 3)}) = φ,r
+            </div>
           </div>
-          <div>
-            ({toFixed(state.theta, 3)}, {toFixed(state.radius, 3)}) = φ,r
-          </div>
-        </div>
+        )}
 
         {this.renderTooltip()}
       </div>

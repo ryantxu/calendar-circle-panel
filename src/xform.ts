@@ -63,10 +63,10 @@ export const toDayBucketsInfo = (year: number, data: DataFrame[]): DayBucketInfo
             const bucket = time.year !== year ? outside : values[time.ordinal - 1];
             bucket.count = bucket.count + 1;
             bucket.sum = bucket.sum + value;
-            if(bucket.sum > max) {
+            if (bucket.sum > max) {
               max = bucket.sum;
             }
-            if(bucket.sum < min) {
+            if (bucket.sum < min) {
               min = bucket.sum;
             }
           }
@@ -77,11 +77,11 @@ export const toDayBucketsInfo = (year: number, data: DataFrame[]): DayBucketInfo
   }
 
   const range = max - min;
-  if(range > 0) {
-    console.log('MINMAX', min, max, range); 
-    for(const bucket of values) {
-      if(bucket.count > 0) {
-        bucket.scale = (bucket.sum-min)/range;
+  if (range > 0) {
+    console.log('MINMAX', min, max, range);
+    for (const bucket of values) {
+      if (bucket.count > 0) {
+        bucket.scale = (bucket.sum - min) / range;
       }
     }
   }
