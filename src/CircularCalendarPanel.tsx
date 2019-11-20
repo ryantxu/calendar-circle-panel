@@ -332,7 +332,7 @@ export class CircularCalendarPanel extends PureComponent<Props, State> {
           </div>
         </div>
 
-        { this.renderTooltip() }
+        {this.renderTooltip()}
       </div>
     );
   }
