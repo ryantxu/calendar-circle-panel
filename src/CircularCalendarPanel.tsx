@@ -309,7 +309,7 @@ export class CircularCalendarPanel extends PureComponent<Props, State> {
           `}
         >
           <div>
-            <Button variant="inverse" onClick={this.onClickYear}>
+            <Button variant="secondary" onClick={this.onClickYear}>
               {this.state.year}
             </Button>
           </div>

@@ -21,7 +21,12 @@ interface MouseEventInfo {
   event: MouseEvent;
 }
 
-export type CanvasDrawFunction<T = any> = (ctx: CanvasRenderingContext2D, width: number, height: number, data?: T) => void;
+export type CanvasDrawFunction<T = any> = (
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  data?: T
+) => void;
 
 export interface CanvasMouseCallback<T = any> extends MouseEventInfo {
   type: MouseEvtType;

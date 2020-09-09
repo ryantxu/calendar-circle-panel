@@ -158,7 +158,9 @@ export const toDayBuckets = (year: number, data: DataFrame[]): DataFrame => {
     ],
     length: dates.length,
     meta: {
-      outside, // Someplace more general?
+      custom: {
+        outside, // Someplace more general?
+      },
     },
   };
 };
