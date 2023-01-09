@@ -18,6 +18,6 @@
   },
   "dependencies": {
     "@types/luxon": "^1.15.2",
-    "luxon": "^1.21.1"
+    "luxon": "^2.5.2"
   }
 }
